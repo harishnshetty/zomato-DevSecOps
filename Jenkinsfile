@@ -19,7 +19,7 @@ pipeline {
 
         stage("Git Checkout") {
             steps {
-                git branch: 'main', url: 'https://github.com/harishnshetty/zomato-devsecops.git'
+                git branch: 'main', url: 'https://github.com/harishnshetty/hotstar-DevSecOps.git'
             }
         }
 
@@ -27,8 +27,8 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonar-server') {
                     sh ''' $SCANNER_HOME/bin/sonar-scanner \
-                        -Dsonar.projectName=zomato \
-                        -Dsonar.projectKey=zomato '''
+                        -Dsonar.projectName=hotstar \
+                        -Dsonar.projectKey=hotstar '''
                 }
             }
         }
@@ -36,9 +36,12 @@ pipeline {
         stage("Quality Gate") {
             steps {
                 script {
+                    timeout(time: 3, unit: 'MINUTES') {
+                  
                     waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
                 }
             }
+        }
         }
 
         stage("Install NPM Dependencies") {
@@ -47,27 +50,15 @@ pipeline {
             }
         }
         
-        // stage("OWASP FS Scan") {
-        //     steps {
-        //         dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit',
-        //                         odcInstallation: 'dp-check'
-        //         dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-        //     }
-        // }  
-
-
-
-
-        
-        // https://nvd.nist.gov/developers/request-an-api-key  [request an API key]
+       
         stage("OWASP FS Scan") {
             steps {
                 dependencyCheck additionalArguments: '''
                     --scan ./ 
                     --disableYarnAudit 
                     --disableNodeAudit 
-                    --nvdApiKey 788b28b3-e0a8-4fcf-a6c7-a6c4b772d8a7  
-                    ''',
+                
+                   ''',
                 odcInstallation: 'dp-check'
 
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
@@ -84,12 +75,12 @@ pipeline {
         stage("Build Docker Image") {
             steps {
                 script {
-                    env.IMAGE_TAG = "harishnshetty/zomato:${BUILD_NUMBER}"
+                    env.IMAGE_TAG = "harishnshetty/hotstar:${BUILD_NUMBER}"
 
                     // Optional cleanup
-                    sh "docker rmi -f zomato ${env.IMAGE_TAG} || true"
+                    sh "docker rmi -f hotstar ${env.IMAGE_TAG} || true"
 
-                    sh "docker build -t zomato ."
+                    sh "docker build -t hotstar ."
                 }
             }
         }
@@ -99,12 +90,12 @@ pipeline {
                 script {
                     withCredentials([string(credentialsId: 'docker-cred', variable: 'dockerpwd')]) {
                         sh "docker login -u harishnshetty -p ${dockerpwd}"
-                        sh "docker tag zomato ${env.IMAGE_TAG}"
+                        sh "docker tag hotstar ${env.IMAGE_TAG}"
                         sh "docker push ${env.IMAGE_TAG}"
 
                         // Also push latest
-                        sh "docker tag zomato harishnshetty/zomato:latest"
-                        sh "docker push harishnshetty/zomato:latest"
+                        sh "docker tag hotstar harishnshetty/hotstar:latest"
+                        sh "docker push harishnshetty/hotstar:latest"
                     }
                 }
             }
@@ -135,14 +126,14 @@ pipeline {
         stage("Deploy to Container") {
             steps {
                 script {
-                    sh "docker rm -f zomato || true"
-                    sh "docker run -d --name zomato -p 80:3000 ${env.IMAGE_TAG}"
+                    sh "docker rm -f hotstar || true"
+                    sh "docker run -d --name hotstar -p 80:80 ${env.IMAGE_TAG}"
                 }
             }
         }
     }
 
-     post {
+      post {
     always {
         script {
             def buildStatus = currentBuild.currentResult
@@ -151,7 +142,7 @@ pipeline {
             emailext (
                 subject: "Pipeline ${buildStatus}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """
-                    <p>This is a Jenkins Reddit CICD pipeline status.</p>
+                    <p>This is a Jenkins Hotstar CICD pipeline status.</p>
                     <p>Project: ${env.JOB_NAME}</p>
                     <p>Build Number: ${env.BUILD_NUMBER}</p>
                     <p>Build Status: ${buildStatus}</p>
@@ -167,5 +158,7 @@ pipeline {
     }
 }
 }
+
+
 
 
