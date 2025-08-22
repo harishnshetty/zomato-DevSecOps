@@ -119,10 +119,10 @@ pipeline {
                     echo '🔍 Running Trivy scan on ${env.IMAGE_TAG}'
 
                     # JSON report
-                    trivy image -f json -o trivy-report.json ${env.IMAGE_TAG}
+                    trivy image -f json -o trivy-image.json ${env.IMAGE_TAG}
 
                     # HTML report using built-in HTML format
-                    trivy image -f table -o trivy-report.txt ${env.IMAGE_TAG}
+                    trivy image -f table -o trivy-image.txt ${env.IMAGE_TAG}
 
                     # Fail build if HIGH/CRITICAL vulnerabilities found
                     # trivy image --exit-code 1 --severity HIGH,CRITICAL ${env.IMAGE_TAG} || true
@@ -143,29 +143,29 @@ pipeline {
     }
 
      post {
-		always {
-              
-                        
-		    emailext(
-		        to: 'harishn662@gmail.com',
-		        subject: "📢 Jenkins Build Report: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-		        body: """
-		            <html>
-		                <body style="font-family: Arial, sans-serif; line-height: 1.5;">
-		                    <p>📌 <b>This is a Jenkins Prime-Video CICD pipeline status.</b></p>
-		                    <p><b>Project:</b> ${env.JOB_NAME}</p>
-		                    <p><b>Build Number:</b> ${env.BUILD_NUMBER}</p>
-		                    <p><b>Build Status:</b> ${env.buildStatus}</p>
-		                    <p><b>Started by:</b> ${env.buildUser}</p>
-		                    <p><b>Build URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
-		                </body>
-		            </html>
-		        """,
-		        mimeType: 'text/html',
-		        attachmentsPattern: 'trivyfs.txt'
-		    )
-		}
+    always {
+        script {
+            def buildStatus = currentBuild.currentResult
+            def buildUser = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause')[0]?.userId ?: ' Github User'
+
+            emailext (
+                subject: "Pipeline ${buildStatus}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <p>This is a Jenkins Reddit CICD pipeline status.</p>
+                    <p>Project: ${env.JOB_NAME}</p>
+                    <p>Build Number: ${env.BUILD_NUMBER}</p>
+                    <p>Build Status: ${buildStatus}</p>
+                    <p>Started by: ${buildUser}</p>
+                    <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                """,
+                to: 'harishn662@gmail.com',
+                from: 'harishn662@gmail.com',
+                mimeType: 'text/html',
+                attachmentsPattern: 'trivyfs.txt,trivy-image.json,trivy-image.txt,dependency-check-report.xml'
+                    )
+        }
     }
+}
 }
 
 
